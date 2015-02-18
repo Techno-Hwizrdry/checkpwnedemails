@@ -129,7 +129,7 @@ def main():
 	else:
 		results = get_results(email_list, BREACHED, opts) + get_results(email_list, PASTEBIN, opts)
 
-	if opts.output_path:
+	if opts.output_path and (opts.only_pastebins or opt.onlybreaches):
 		write_results_to_file(opts.output_path, results)
 
 
