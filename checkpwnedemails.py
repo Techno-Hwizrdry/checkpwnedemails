@@ -106,8 +106,6 @@ def write_results_to_file(filename, results):
 	filename = filename[:filename.rfind('.')]
 
 	for res, f in zip(results, FILES):
-		print "f = " + f
-
 		outfile = open(filename + f, 'w')
 
         	for r in res:
@@ -137,7 +135,7 @@ def main():
 		results.append(get_results(email_list, BREACHED, opts))
 		results.append(get_results(email_list, PASTEBIN, opts))
 
-	if opts.output_path: #and (opts.only_pastebins or opts.only_breaches):
+	if opts.output_path:
 		write_results_to_file(opts.output_path, results)
 
 
