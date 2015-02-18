@@ -101,12 +101,19 @@ def tab_delimited_string(data):
 	return tab_string.rstrip()
 
 def write_results_to_file(filename, results):
-	outfile = open(filename, 'w')
+	FILES = ["_breaches.txt", "_pastes.txt"]
 
-        for r in results:
-		outfile.write(tab_delimited_string(r) + '\n')
+	filename = filename[:filename.rfind('.')]
 
-        outfile.close()
+	for res, f in zip(results, FILES):
+		print "f = " + f
+
+		outfile = open(filename + f, 'w')
+
+        	for r in res:
+			outfile.write(tab_delimited_string(r) + '\n')
+
+        	outfile.close()
 
 def main():
 	email_list = []
@@ -120,16 +127,17 @@ def main():
 
 		email_list_file.close()
 
-        results = None
+        results = []
 
         if opts.only_breaches:
-		results = get_results(email_list, BREACHED, opts)
+		results.append(get_results(email_list, BREACHED, opts))
 	elif opts.only_pastebins:
-		results = get_results(email_list, PASTEBIN, opts)
+		results.append(get_results(email_list, PASTEBIN, opts))
 	else:
-		results = get_results(email_list, BREACHED, opts) + get_results(email_list, PASTEBIN, opts)
+		results.append(get_results(email_list, BREACHED, opts))
+		results.append(get_results(email_list, PASTEBIN, opts))
 
-	if opts.output_path and (opts.only_pastebins or opts.only_breaches):
+	if opts.output_path: #and (opts.only_pastebins or opts.only_breaches):
 		write_results_to_file(opts.output_path, results)
 
 
