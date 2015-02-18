@@ -100,8 +100,8 @@ def tab_delimited_string(data):
 
 	return tab_string.rstrip()
 
-def write_results_to_file(filepath, results):
-	outfile = open(filepath, 'w')
+def write_results_to_file(filename, results):
+	outfile = open(filename, 'w')
 
         for r in results:
 		outfile.write(tab_delimited_string(r) + '\n')
@@ -129,7 +129,7 @@ def main():
 	else:
 		results = get_results(email_list, BREACHED, opts) + get_results(email_list, PASTEBIN, opts)
 
-	if opts.output_path and (opts.only_pastebins or opt.onlybreaches):
+	if opts.output_path and (opts.only_pastebins or opts.onlybreaches):
 		write_results_to_file(opts.output_path, results)
 
 
