@@ -100,12 +100,21 @@ def tab_delimited_string(data):
 
 	return tab_string.rstrip()
 
-def write_results_to_file(filename, results):
-	FILES = ["_breaches.txt", "_pastes.txt"]
+def write_results_to_file(filename, results, opts):
+	files = []
 
-	filename = filename[:filename.rfind('.')]
+	if opts.only_breaches:
+		files.append("_breaches.txt")
+	elif opts.only_pastebins:
+		files.append("_pastes.txt")
+	else:
+		files.append("_breaches.txt")
+		files.append("_pastes.txt")
 
-	for res, f in zip(results, FILES):
+	if filename.rfind('.') > -1:
+		filename = filename[:filename.rfind('.')]
+
+	for res, f in zip(results, files):
 		outfile = open(filename + f, 'w')
 
         	for r in res:
@@ -136,7 +145,7 @@ def main():
 		results.append(get_results(email_list, PASTEBIN, opts))
 
 	if opts.output_path:
-		write_results_to_file(opts.output_path, results)
+		write_results_to_file(opts.output_path, results, opts)
 
 
 if __name__ == '__main__':
