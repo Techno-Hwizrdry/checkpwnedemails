@@ -1,5 +1,5 @@
 __author__  = "Alexan Mardigian"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from argparse import ArgumentParser
 
@@ -34,7 +34,7 @@ def get_args():
         parser.add_argument('-s', dest="single_email", help='Send query for just one email address.')
         parser.add_argument('-t', action="store_true", dest='only_pastebins', help='Return results for pastebins only.')
 
-	if len(sys.argv) == 1:
+	if len(sys.argv) == 1:  # If no arguments were provided, then print help and exit.
 		parser.print_help()
 		sys.exit(1)
 
@@ -48,6 +48,7 @@ def get_results(email_list, service, opts):
 	results = []  # list of tuples (email adress, been pwned?, json data)
 
 	for email in email_list:
+		email = email.strip()
 		data = []
                 req  = urllib2.Request(PWNED_API_URL % (urllib.quote(service), urllib.quote(email)))
 
@@ -58,6 +59,7 @@ def get_results(email_list, service, opts):
 
                 except urllib2.HTTPError as e:
                         if e.code == 400:
+				print email
                                 raise InvalidEmail("%s does not appear to be a valid email address.")
                         if e.code == 404 and not opts.only_pwned:
 				results.append( (email, False, data) )
@@ -81,41 +83,67 @@ def get_results(email_list, service, opts):
 
 	return results
 
+#  This function will convert every item, in dlist, into a string and
+#  encode any unicode strings into an 8-bit string.
+def clean_list(dlist):
+	cleaned_list = []
+
+	for d in dlist:
+		try:
+			cleaned_list.append(str(d))
+		except UnicodeEncodeError:
+			cleaned_list.append(str(d.encode('utf-8')))  # Clean the data.
+
+	return cleaned_list
+
 def tab_delimited_string(data):
 	DATACLASSES = 'DataClasses'
 
 	begining_sub_str = data[EMAILINDEX] + '\t' + str(data[PWNEDINDEX])
-        tab_string       = ""
+	output_list      = []
 
 	if data[DATAINDEX]:
-		for bp in data[DATAINDEX]:  # bp stands for breaches and pastbins
+		for bp in data[DATAINDEX]:  # bp stands for breaches/pastbins
 			d = bp
-			flat_data_classes = [str(x) for x in d[DATACLASSES]]
-			d[DATACLASSES]    = flat_data_classes
+			
+			try:
+				flat_data_classes = [str(x) for x in d[DATACLASSES]]
+				d[DATACLASSES]    = flat_data_classes
+			except KeyError:
+				pass  #  Not processing a string for a breach.
 
-			flat_d     = [str(x) for x in d.values()]
-			tab_string = tab_string + begining_sub_str + '\t' + tab_string + "\t".join(flat_d) + '\n'
+			flat_d = clean_list(d.values())
+			output_list.append(begining_sub_str + '\t' + "\t".join(flat_d))
 	else:
-		tab_string = begining_sub_str
+		output_list.append(begining_sub_str)
 
-	return tab_string.rstrip()
+	return '\n'.join(output_list)
 
 def write_results_to_file(filename, results, opts):
+	BREACHESTXT = "_breaches.txt"
+	PASTESTXT   = "_pastes.txt"
 	files = []
 
+	file_headers = {
+			BREACHESTXT: "Email Address\tIs Pwned\tPwn Count\tDomain\tName\tTitle\tData Classes\tLogo Type\tBreach Date\tAdded Date\tIs Verified\tDescription",
+			PASTESTXT:   "Email Address\tIs Pwned\tDate\tSource\tEmail Count\tID\tTitle",
+	}
+
 	if opts.only_breaches:
-		files.append("_breaches.txt")
+		files.append(BREACHESTXT)
 	elif opts.only_pastebins:
-		files.append("_pastes.txt")
+		files.append(PASTESTXT)
 	else:
-		files.append("_breaches.txt")
-		files.append("_pastes.txt")
+		files.append(BREACHESTXT)
+		files.append(PASTESTXT)
 
 	if filename.rfind('.') > -1:
 		filename = filename[:filename.rfind('.')]
 
 	for res, f in zip(results, files):
 		outfile = open(filename + f, 'w')
+
+		outfile.write(file_headers[f] + '\n')
 
         	for r in res:
 			outfile.write(tab_delimited_string(r) + '\n')
