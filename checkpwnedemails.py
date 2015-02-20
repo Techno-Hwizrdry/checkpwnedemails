@@ -59,8 +59,7 @@ def get_results(email_list, service, opts):
 
                 except urllib2.HTTPError as e:
                         if e.code == 400:
-				print email
-                                raise InvalidEmail("%s does not appear to be a valid email address.")
+				print "%s does not appear to be a valid email address." % (email)
                         if e.code == 404 and not opts.only_pwned:
 				results.append( (email, False, data) )
 
