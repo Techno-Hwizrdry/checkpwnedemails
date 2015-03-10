@@ -84,7 +84,7 @@ def get_results(email_list, service, opts):
 
 #  This function will convert every item, in dlist, into a string and
 #  encode any unicode strings into an 8-bit string.
-def clean_list(dlist):
+def clean_and_encode(dlist):
 	cleaned_list = []
 
 	for d in dlist:
@@ -111,7 +111,7 @@ def tab_delimited_string(data):
 			except KeyError:
 				pass  #  Not processing a string for a breach.
 
-			flat_d = clean_list(d.values())
+			flat_d = clean_and_encode(d.values())
 			output_list.append(begining_sub_str + '\t' + "\t".join(flat_d))
 	else:
 		output_list.append(begining_sub_str)
