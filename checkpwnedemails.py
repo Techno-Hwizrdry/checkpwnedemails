@@ -1,7 +1,8 @@
 __author__  = "Alexan Mardigian"
-__version__ = "0.2.0"
+__version__ = "1.1.1"
 
 from argparse import ArgumentParser
+from time     import sleep
 
 import json
 import sys
@@ -10,6 +11,7 @@ import urllib
 import urllib2
 
 PWNED_API_URL = "https://haveibeenpwned.com/api/v2/%s/%s"
+HEADERS = {"User-Agent": "checkpwnedemails"}
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -50,7 +52,7 @@ def get_results(email_list, service, opts):
 	for email in email_list:
 		email = email.strip()
 		data = []
-                req  = urllib2.Request(PWNED_API_URL % (urllib.quote(service), urllib.quote(email)))
+                req  = urllib2.Request(PWNED_API_URL % (urllib.quote(service), urllib.quote(email)), headers=HEADERS)
 
                 try:
                 	response = urllib2.urlopen(req)  # This is a json object.
@@ -59,9 +61,15 @@ def get_results(email_list, service, opts):
 
                 except urllib2.HTTPError as e:
                         if e.code == 400:
-				print "%s does not appear to be a valid email address." % (email)
+				print "%s does not appear to be a valid email address.  HTTP Error 400." % (email)
+			if e.code == 403:
+				print "Forbidden - no user agent has been specified in the request.  HTTP Error 403."
                         if e.code == 404 and not opts.only_pwned:
 				results.append( (email, False, data) )
+			if e.code == 429:
+				print "Too many requests; going over the request rate limit.  HTTP Error 429."
+
+		sleep(1.6)  # This 1.6 second delay is for rate limiting.
 
 		if not opts.output_path:
 			try:
