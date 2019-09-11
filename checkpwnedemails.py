@@ -11,7 +11,6 @@ import urllib
 import urllib2
 
 
-HIBP_API_KEY  = "Your key here"
 PWNED_API_URL = "https://haveibeenpwned.com/api/v3/%s/%s?truncateResponse=%s"
 HEADERS = {
            "User-Agent": "checkpwnedemails",
