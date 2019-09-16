@@ -1,5 +1,5 @@
 __author__  = "Alexan Mardigian"
-__version__ = "1.2"
+__version__ = "1.2.1"
 
 from argparse import ArgumentParser
 from time     import sleep
@@ -23,6 +23,8 @@ DATAINDEX  = 2
 
 BREACHED = "breachedaccount"
 PASTEBIN = "pasteaccount"
+
+RATE_LIMIT = 1.6  # in seconds
 
 class PwnedArgParser(ArgumentParser):
 	def error(self, message):
@@ -52,6 +54,26 @@ def get_args():
 def clean_list(list_of_strings):
 	return [str(x).strip() for x in list_of_strings]
 
+#  This function will print the appropriate output string based on the
+#  HTTP error code what was passed in. If an invalid HIBP API key was used
+#  (error code 401), then checkpwnedemails.py should stop running.
+def printHTTPErrorOutput(http_error_code, hibp_api_key, email=None):
+	ERROR_CODE_OUTPUT = {
+		400: "HTTP Error 400.  %s does not appear to be a valid email address." % (email),
+		401: "HTTP Error 401.  Unauthorised - the API key provided (%s) was not valid." % (hibp_api_key),
+		403: "HTTP Error 403.  Forbidden - no user agent has been specified in the request.",
+		429: "HTTP Error 429.  Too many requests; the rate limt has been exceeded.",
+		503: "HTTP Error 503.  Service unavailable."
+	}
+
+	try:
+		print ERROR_CODE_OUTPUT[http_error_code]
+	except KeyError:
+		print "HTTP Error %s" % (http_error_code)
+
+	if http_error_code == 401:
+		sys.exit(1)
+
 def get_results(email_list, service, opts, hibp_api_key):
 	results = []  # list of tuples (email adress, been pwned?, json data)
 
@@ -66,20 +88,12 @@ def get_results(email_list, service, opts, hibp_api_key):
 			data     = json.loads(response.read())
 			results.append( (email, True, data) )
 		except urllib2.HTTPError as e:
-			if e.code == 400:
-				print "%s does not appear to be a valid email address.  HTTP Error 400." % (email)
-			if e.code == 401:
-				print "Unauthorised - the API key provided (%s) was not valid." % (hibp_api_key)
-			if e.code == 403:
-				print "Forbidden - no user agent has been specified in the request.  HTTP Error 403."
 			if e.code == 404 and not opts.only_pwned:
-				results.append( (email, False, data) )
-			if e.code == 429:
-				print "Too many requests; going over the request rate limit.  HTTP Error 429."
-			if e.code == 503:
-				print "Service unavailable."
+				results.append( (email, False, data) )  # No results came back for this email.  According to HIBP, this email was not pwned.
+			elif e.code != 404:
+				printHTTPErrorOutput(e.code, hibp_api_key, email)
 
-		sleep(1.6)  # This 1.6 second delay is for rate limiting.
+		sleep(RATE_LIMIT)  # This delay is for rate limiting.
 
 		if not opts.output_path:
 			try:
