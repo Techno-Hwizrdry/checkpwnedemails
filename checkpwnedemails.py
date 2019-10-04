@@ -6,7 +6,6 @@ from time     import sleep
 
 import json
 import sys
-import traceback
 import urllib
 import urllib2
 
@@ -188,10 +187,14 @@ def main():
 
 	if opts.single_email:
 		email_list = [opts.single_email]
-	else:
+	elif opts.input_path:
 		email_list_file = open(opts.input_path, 'r')
 		email_list      = clean_list(email_list_file.readlines())
 		email_list_file.close()
+	else:
+		print "\nNo email addresses were provided."
+	 	print "Please provide a single email address (using -s) or a list of email addresses (using -i).\n"
+		sys.exit(1)
 
 	results = []
 
