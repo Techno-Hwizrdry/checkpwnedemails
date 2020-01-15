@@ -1,4 +1,6 @@
 # checkpwnedemails
+NOTE: This version of checkpwnedemails.py is made for Python 2. [Click here if you want the version that uses Python 3.](https://github.com/Techno-Hwizrdry/checkpwnedemails3)
+
 This python script will check if a single email address, or a text file listing several email addresses, has been compromised in a data breach (pwned).  This script uses the haveibeenpwned API to compare the email address(es), provided by the user, to the haveibeenpwned database to check if they have been pwned or not.
 
 
