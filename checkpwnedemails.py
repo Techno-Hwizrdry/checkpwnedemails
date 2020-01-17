@@ -60,7 +60,7 @@ def printHTTPErrorOutput(http_error_code, hibp_api_key, email=None):
 		400: "HTTP Error 400.  %s does not appear to be a valid email address." % (email),
 		401: "HTTP Error 401.  Unauthorised - the API key provided (%s) was not valid." % (hibp_api_key),
 		403: "HTTP Error 403.  Forbidden - no user agent has been specified in the request.",
-		429: "HTTP Error 429.  Too many requests; the rate limt has been exceeded.",
+		429: "HTTP Error 429.  Too many requests; the rate limit has been exceeded.",
 		503: "HTTP Error 503.  Service unavailable."
 	}
 
