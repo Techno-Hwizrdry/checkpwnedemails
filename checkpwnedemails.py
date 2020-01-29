@@ -163,7 +163,7 @@ def write_results_to_file(filename, results, opts):
 	files = []
 
 	file_headers = {
-			BREACHESTXT: "Email Address\tIs Pwned\tPwn Count\tDomain\tName\tTitle\tData Classes\tLogo Type\tBreach Date\tAdded Date\tIs Verified\tDescription",
+			BREACHESTXT: "Email Address\tIs Pwned\tName\tTitle\tDomain\tBreach Date\tAdded Date\tModified Date\tPwn Count\tDescription\tLogo Path\tData Classes\tIs Verified\tIs Fabricated\tIs Sensitive\tIs Retired\tIs SpamList",
 			PASTESTXT:   "Email Address\tIs Pwned\tDate\tSource\tEmail Count\tID\tTitle",
 	}
 
