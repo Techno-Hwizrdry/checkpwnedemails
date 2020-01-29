@@ -179,7 +179,7 @@ def write_results_to_file(filename, results, opts):
 		filename = filename[:filename.rfind('.')]
 
 	for res, f in zip(results, files):
-		outfile = open(filename + f, 'w')
+		outfile = open(filename + f, 'w', encoding='utf-8')
 
 		outfile.write(file_headers[f] + '\n')
 
