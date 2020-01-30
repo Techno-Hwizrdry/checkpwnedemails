@@ -111,7 +111,7 @@ def get_results(email_list, service, opts, hibp_api_key):
 						print("Email address %s not pwned.  Yay!" % (email))
 					else:
 						print("Email address %s was not found in any pastes.  Yay!" %(email))
-				elif data:
+				else:
 					print("\n%s pwned!\n==========" % (email))
 					print(json.dumps(data, indent=4))
 					print('\n')
