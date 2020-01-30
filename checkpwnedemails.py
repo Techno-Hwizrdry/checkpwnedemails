@@ -158,13 +158,16 @@ def tab_delimited_string(data):
 	return '\n'.join(output_list)
 
 def write_results_to_file(filename, results, opts):
-	BREACHESTXT = "_breaches.txt"
-	PASTESTXT   = "_pastes.txt"
+	BREACHESTXT   = "_breaches.txt"
+	PASTESTXT     = "_pastes.txt"
+	BREACH_HEADER = ("Email Address", "Is Pwned", "Name", "Title", "Domain", "Breach Date", "Added Date", "Modified Date", "Pwn Count", "Description", "Logo Path", "Data Classes", "Is Verified", "Is Fabricated", "Is Sensitive", "Is Retired", "Is SpamList")
+	PASTES_HEADER = ("Email Address", "Is Pwned", "ID", "Source", "Title", "Date", "Email Count")
+
 	files = []
 
 	file_headers = {
-			BREACHESTXT: "Email Address\tIs Pwned\tName\tTitle\tDomain\tBreach Date\tAdded Date\tModified Date\tPwn Count\tDescription\tLogo Path\tData Classes\tIs Verified\tIs Fabricated\tIs Sensitive\tIs Retired\tIs SpamList",
-			PASTESTXT:   "Email Address\tIs Pwned\tDate\tSource\tEmail Count\tID\tTitle",
+			BREACHESTXT: "\t".join(BREACH_HEADER),
+			PASTESTXT:   "\t".join(PASTES_HEADER)
 	}
 
 	if opts.only_breaches:
