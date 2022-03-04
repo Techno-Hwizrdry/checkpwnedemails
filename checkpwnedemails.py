@@ -52,7 +52,7 @@ def printHTTPErrorOutput(http_error_code, hibp_api_key, email=None):
 		503: "HTTP Error 503.  Service unavailable."
 	}
 
-    default_output = "HTTP Error %s" % (http_error_code)
+	default_output = "HTTP Error %s" % (http_error_code)
 	print(ERROR_CODE_OUTPUT.get(http_error_code, default_output))
 
 	if http_error_code == 401:
@@ -208,7 +208,6 @@ def main():
 
 	if opts.output_path:
 		write_results_to_file(opts.output_path, results, opts)
-
 
 if __name__ == '__main__':
 	main()
