@@ -125,28 +125,17 @@ def clean_and_encode(dlist):
 	return cleaned_list
 
 def tab_delimited_string(data):
-	DATACLASSES = 'DataClasses'
-
 	begining_sub_str = data[EMAILINDEX] + '\t' + str(data[PWNEDINDEX])
-	output_list = []
+	output = []
 
 	if data[DATAINDEX]:
 		for bp in data[DATAINDEX]:  # bp stands for breaches/pastbins
-			d = bp
-			
-			# TODO: Remove this block of code, since it's not really doing anything.
-			try:
-			 	flat_data_classes = [str(x) for x in d[DATACLASSES]]
-			 	d[DATACLASSES]    = flat_data_classes
-			except KeyError:
-				pass  #  Not processing a string for a breach.
-
-			flat_d = clean_and_encode(d.values())
-			output_list.append(begining_sub_str + '\t' + "\t".join(flat_d))
+			s = clean_and_encode(bp.values())
+			output.append(begining_sub_str + '\t' + "\t".join(s))
 	else:
-		output_list.append(begining_sub_str)
+		output.append(begining_sub_str)
 
-	return '\n'.join(output_list)
+	return '\n'.join(output)
 
 def write_results_to_file(filename, results, opts):
 	BREACHESTXT   = "_breaches.txt"
