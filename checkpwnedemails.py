@@ -8,10 +8,6 @@ import requests
 import sys
 
 PWNED_API_URL = "https://haveibeenpwned.com/api/v3/%s/%s?truncateResponse=%s"
-HEADERS = {
-    "User-Agent": "checkpwnedemails",
-    "hibp-api-key": "",
-}
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -56,18 +52,20 @@ def printHTTPErrorOutput(http_error_code, hibp_api_key, email=None):
 		503: "HTTP Error 503.  Service unavailable."
 	}
 
-	try:
-		print(ERROR_CODE_OUTPUT[http_error_code])
-	except KeyError:
-		print("HTTP Error %s" % (http_error_code))
+    default_output = "HTTP Error %s" % (http_error_code)
+	print(ERROR_CODE_OUTPUT.get(http_error_code, default_output))
 
 	if http_error_code == 401:
 		sys.exit(1)
 
-def get_results(email_list, service, opts, hibp_api_key):
+def get_results(emails, service, opts, hibp_api_key):
+	HEADERS = {
+		"User-Agent": "checkpwnedemails",
+		"hibp-api-key": hibp_api_key,
+	}
 	results = []  # list of tuples (email adress, been pwned?, json data)
 
-	for email in email_list:
+	for email in emails:
 		email = email.strip()
 		data = []
 		names_only = "true" if opts.names_only else "false"
@@ -158,8 +156,8 @@ def write_results_to_file(filename, results, opts):
 	files = []
 
 	file_headers = {
-			BREACHESTXT: "\t".join(BREACH_HEADER),
-			PASTESTXT:   "\t".join(PASTES_HEADER)
+		BREACHESTXT: "\t".join(BREACH_HEADER),
+		PASTESTXT:   "\t".join(PASTES_HEADER)
 	}
 
 	if opts.only_breaches:
@@ -174,18 +172,15 @@ def write_results_to_file(filename, results, opts):
 		filename = filename[:filename.rfind('.')]
 
 	for res, f in zip(results, files):
-		outfile = open(filename + f, 'w', encoding='utf-8')
+		with open(filename + f, 'w', encoding='utf-8') as outfile:
+			outfile.write(file_headers[f] + '\n')
 
-		outfile.write(file_headers[f] + '\n')
-
-		for r in res:
-			outfile.write(tab_delimited_string(r) + '\n')
-
-		outfile.close()
+			for r in res:
+				outfile.write(tab_delimited_string(r) + '\n')
 
 def main():
 	hibp_api_key = ""
-	email_list = []
+	emails = []
 	opts = get_args()
 
 	if not opts.apikey_path:
@@ -196,18 +191,16 @@ def main():
 		try:
 			with open(opts.apikey_path) as apikey_file:
 				hibp_api_key = apikey_file.readline().strip()
-				HEADERS["hibp-api-key"] = hibp_api_key
 		except IOError:
 			print("\nCould not read file:", opts.apikey_path)
 			print("Check if the file path is valid, and try again.\n")
 			sys.exit(1)
 
 	if opts.single_email:
-		email_list = [opts.single_email]
+		emails = (opts.single_email)
 	elif opts.input_path:
-		email_list_file = open(opts.input_path, 'r')
-		email_list      = clean_list(email_list_file.readlines())
-		email_list_file.close()
+		with open(opts.input_path, 'r') as emails_file:
+			emails = tuple(clean_list(emails_file.readlines()))
 	else:
 		print("\nNo email addresses were provided.")
 		print("Please provide a single email address (using -s) or a list of email addresses (using -i).\n")
@@ -216,12 +209,12 @@ def main():
 	results = []
 
 	if opts.only_breaches:
-		results.append(get_results(email_list, BREACHED, opts, hibp_api_key))
+		results.append(get_results(emails, BREACHED, opts, hibp_api_key))
 	elif opts.only_pastebins:
-		results.append(get_results(email_list, PASTEBIN, opts, hibp_api_key))
+		results.append(get_results(emails, PASTEBIN, opts, hibp_api_key))
 	else:
-		results.append(get_results(email_list, BREACHED, opts, hibp_api_key))
-		results.append(get_results(email_list, PASTEBIN, opts, hibp_api_key))
+		results.append(get_results(emails, BREACHED, opts, hibp_api_key))
+		results.append(get_results(emails, PASTEBIN, opts, hibp_api_key))
 
 	if opts.output_path:
 		write_results_to_file(opts.output_path, results, opts)
