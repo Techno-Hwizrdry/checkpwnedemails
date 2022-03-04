@@ -128,15 +128,16 @@ def tab_delimited_string(data):
 	DATACLASSES = 'DataClasses'
 
 	begining_sub_str = data[EMAILINDEX] + '\t' + str(data[PWNEDINDEX])
-	output_list      = []
+	output_list = []
 
 	if data[DATAINDEX]:
 		for bp in data[DATAINDEX]:  # bp stands for breaches/pastbins
 			d = bp
 			
+			# TODO: Remove this block of code, since it's not really doing anything.
 			try:
-				flat_data_classes = [str(x) for x in d[DATACLASSES]]
-				d[DATACLASSES]    = flat_data_classes
+			 	flat_data_classes = [str(x) for x in d[DATACLASSES]]
+			 	d[DATACLASSES]    = flat_data_classes
 			except KeyError:
 				pass  #  Not processing a string for a breach.
 
@@ -171,11 +172,11 @@ def write_results_to_file(filename, results, opts):
 	if filename.rfind('.') > -1:
 		filename = filename[:filename.rfind('.')]
 
-	for res, f in zip(results, files):
+	for result, f in zip(results, files):
 		with open(filename + f, 'w', encoding='utf-8') as outfile:
 			outfile.write(file_headers[f] + '\n')
 
-			for r in res:
+			for r in result:
 				outfile.write(tab_delimited_string(r) + '\n')
 
 def main():
