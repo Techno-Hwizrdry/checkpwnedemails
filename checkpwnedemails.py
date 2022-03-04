@@ -115,7 +115,6 @@ def get_results(emails, service, opts, hibp_api_key):
 #  encode any unicode strings into an 8-bit string.
 def clean_and_encode(dlist):
 	cleaned_list = []
-
 	for d in dlist:
 		try:
 			cleaned_list.append(str(d))
@@ -144,7 +143,6 @@ def write_results_to_file(filename, results, opts):
 	PASTES_HEADER = ("Email Address", "Is Pwned", "ID", "Source", "Title", "Date", "Email Count")
 
 	files = []
-
 	file_headers = {
 		BREACHESTXT: "\t".join(BREACH_HEADER),
 		PASTESTXT:   "\t".join(PASTES_HEADER)
