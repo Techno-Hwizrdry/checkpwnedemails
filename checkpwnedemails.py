@@ -1,18 +1,16 @@
 __author__  = "Alexan Mardigian"
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
 from argparse import ArgumentParser
-from time     import sleep
-
+from time import sleep
 import json
 import requests
 import sys
 
-
 PWNED_API_URL = "https://haveibeenpwned.com/api/v3/%s/%s?truncateResponse=%s"
 HEADERS = {
-           "User-Agent": "checkpwnedemails",
-           "hibp-api-key": "",
+    "User-Agent": "checkpwnedemails",
+    "hibp-api-key": "",
 }
 
 EMAILINDEX = 0
@@ -24,14 +22,8 @@ PASTEBIN = "pasteaccount"
 
 RATE_LIMIT = 1.6  # in seconds
 
-class PwnedArgParser(ArgumentParser):
-	def error(self, message):
-		sys.stderr.write('error: %s\n' %message)
-		self.print_help()
-		sys.exit(2)
-
 def get_args():
-	parser = PwnedArgParser()
+	parser = ArgumentParser()
 
 	parser.add_argument('-a', dest='apikey_path',  help='Path to text file that contains your HIBP API key.')
 	parser.add_argument('-b', action="store_true", dest='only_breaches', help='Return results for breaches only.')
