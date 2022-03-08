@@ -65,10 +65,7 @@ def get_results(emails, service, opts, hibp_api_key):
 	}
 	results = []  # list of tuples (email adress, been pwned?, json data)
 
-	print(type(emails))
-
 	for email in emails:
-		print(f'EMAIL: {email}')
 		email = email.strip()
 		data = []
 		names_only = "true" if opts.names_only else "false"
@@ -139,7 +136,7 @@ def tab_delimited_string(data):
 
 	return '\n'.join(output)
 
-def write_results_to_file(filename, results, opts):
+def write_results_to_file(results, opts):
 	BREACHESTXT   = "_breaches.txt"
 	PASTESTXT     = "_pastes.txt"
 	BREACH_HEADER = ("Email Address", "Is Pwned", "Name", "Title", "Domain", "Breach Date", "Added Date", "Modified Date", "Pwn Count", "Description", "Logo Path", "Data Classes", "Is Verified", "Is Fabricated", "Is Sensitive", "Is Retired", "Is SpamList")
@@ -159,8 +156,10 @@ def write_results_to_file(filename, results, opts):
 		files.append(BREACHESTXT)
 		files.append(PASTESTXT)
 
-	if filename.rfind('.') > -1:
-		filename = filename[:filename.rfind('.')]
+	out_path = opts.output_path
+	filename = out_path
+	if out_path.rfind('.') > -1:
+		filename = out_path[ : out_path.rfind('.')]
 
 	for result, f in zip(results, files):
 		with open(filename + f, 'w', encoding='utf-8') as outfile:
@@ -171,7 +170,6 @@ def write_results_to_file(filename, results, opts):
 
 def main():
 	hibp_api_key = ""
-	emails = ()
 	opts = get_args()
 
 	if not opts.apikey_path:
@@ -187,6 +185,7 @@ def main():
 			print("Check if the file path is valid, and try again.\n")
 			sys.exit(1)
 
+	emails = None
 	if opts.single_email:
 		emails = tuple([opts.single_email])
 	elif opts.input_path:
@@ -208,7 +207,7 @@ def main():
 		results.append(get_results(emails, PASTEBIN, opts, hibp_api_key))
 
 	if opts.output_path:
-		write_results_to_file(opts.output_path, results, opts)
+		write_results_to_file(results, opts)
 
 if __name__ == '__main__':
 	main()
