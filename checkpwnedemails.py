@@ -65,7 +65,10 @@ def get_results(emails, service, opts, hibp_api_key):
 	}
 	results = []  # list of tuples (email adress, been pwned?, json data)
 
+	print(type(emails))
+
 	for email in emails:
+		print(f'EMAIL: {email}')
 		email = email.strip()
 		data = []
 		names_only = "true" if opts.names_only else "false"
@@ -168,7 +171,7 @@ def write_results_to_file(filename, results, opts):
 
 def main():
 	hibp_api_key = ""
-	emails = []
+	emails = ()
 	opts = get_args()
 
 	if not opts.apikey_path:
@@ -185,7 +188,7 @@ def main():
 			sys.exit(1)
 
 	if opts.single_email:
-		emails = (opts.single_email)
+		emails = tuple([opts.single_email])
 	elif opts.input_path:
 		with open(opts.input_path, 'r') as emails_file:
 			emails = tuple(clean_list(emails_file.readlines()))
