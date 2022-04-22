@@ -2,6 +2,7 @@ __author__  = "Alexan Mardigian"
 __version__ = "1.2.4"
 
 from argparse import ArgumentParser
+from os.path import exists
 from time import sleep
 import json
 import requests
@@ -63,7 +64,7 @@ def get_results(emails, service, opts, hibp_api_key):
 		"User-Agent": "checkpwnedemails",
 		"hibp-api-key": hibp_api_key,
 	}
-	results = []  # list of tuples (email adress, been pwned?, json data)
+	results = []  # list of tuples (email address, been pwned?, json data)
 
 	for email in emails:
 		email = email.strip()
@@ -80,36 +81,33 @@ def get_results(emails, service, opts, hibp_api_key):
 			if response.content:
 				data = response.json()
 			else:
-				data = None   # No results came back for this email.  According to HIBP, this email was not pwned.
+				# No results came back for this email.
+				# According to HIBP, this email was not pwned.
+				data = None
 				is_pwned = False
 
 			results.append( (email, is_pwned, data) )
 		except requests.exceptions.HTTPError as e:
 			if e.code == 404 and not opts.only_pwned:
-				results.append( (email, False, data) )  # No results came back for this email.  According to HIBP, this email was not pwned.
+				# No results came back for this email.
+				# According to HIBP, this email was not pwned.
+				results.append( (email, False, data) )
 			elif e.code != 404:
 				printHTTPErrorOutput(e.code, hibp_api_key, email)
 
 		sleep(RATE_LIMIT)  # This delay is for rate limiting.
 
-		if not opts.output_path:
-			try:
-				last_result = results[-1]
-
-				if not last_result[PWNEDINDEX]:
-					if service == BREACHED:
-						print("Email address %s not pwned.  Yay!" % (email))
-					else:
-						print("Email address %s was not found in any pastes.  Yay!" %(email))
-				else:
-					print("\n%s pwned!\n==========" % (email))
-					print(json.dumps(data, indent=4))
-					print('\n')
-
-			except IndexError:
-				pass
-
 	return results
+
+def print_results(results, not_pwned_msg):
+	for result in results:
+		data = result[DATAINDEX]
+		email = result[EMAILINDEX]
+		if not result[PWNEDINDEX]:
+			print(not_pwned_msg % (email))
+		else:
+			print("\n%s pwned!\n==========" % (email))
+			print(json.dumps(data, indent=4))
 
 #  This function will convert every item, in dlist, into a string and
 #  encode any unicode strings into an 8-bit string.
@@ -128,7 +126,7 @@ def tab_delimited_string(data):
 	output = []
 
 	if data[DATAINDEX]:
-		for bp in data[DATAINDEX]:  # bp stands for breaches/pastbins
+		for bp in data[DATAINDEX]:  # bp stands for breaches/pastebins
 			s = clean_and_encode(bp.values())
 			output.append(begining_sub_str + '\t' + "\t".join(s))
 	else:
@@ -139,9 +137,15 @@ def tab_delimited_string(data):
 def write_results_to_file(results, opts):
 	BREACHESTXT   = "_breaches.txt"
 	PASTESTXT     = "_pastes.txt"
-	BREACH_HEADER = ("Email Address", "Is Pwned", "Name", "Title", "Domain", "Breach Date", "Added Date", "Modified Date", "Pwn Count", "Description", "Logo Path", "Data Classes", "Is Verified", "Is Fabricated", "Is Sensitive", "Is Retired", "Is SpamList")
-	PASTES_HEADER = ("Email Address", "Is Pwned", "ID", "Source", "Title", "Date", "Email Count")
-
+	BREACH_HEADER = (
+		"Email Address", "Is Pwned", "Name", "Title", "Domain", "Breach Date",
+		"Added Date", "Modified Date", "Pwn Count", "Description", "Logo Path",
+		"Data Classes", "Is Verified", "Is Fabricated", "Is Sensitive",
+		"Is Retired", "Is SpamList"
+	)
+	PASTES_HEADER = ("Email Address", "Is Pwned", "ID",
+		"Source", "Title", "Date", "Email Count"
+	)
 	files = []
 	file_headers = {
 		BREACHESTXT: "\t".join(BREACH_HEADER),
@@ -168,22 +172,25 @@ def write_results_to_file(results, opts):
 			for r in result:
 				outfile.write(tab_delimited_string(r) + '\n')
 
-def main():
-	hibp_api_key = ""
-	opts = get_args()
+def read_apikey(apikey_path):
+	try:
+		with open(apikey_path) as apikey_file:
+			return apikey_file.readline().strip()
+	except IOError:
+		return ''
 
+def main():
+	opts = get_args()
 	if not opts.apikey_path:
 		print("\nThe path to the file containing the HaveIBeenPwned API key was not found.")
 		print("Please provide the file path with the -a switch and try again.\n")
 		sys.exit(1)
-	else:
-		try:
-			with open(opts.apikey_path) as apikey_file:
-				hibp_api_key = apikey_file.readline().strip()
-		except IOError:
-			print("\nCould not read file:", opts.apikey_path)
-			print("Check if the file path is valid, and try again.\n")
-			sys.exit(1)
+
+	hibp_api_key = read_apikey(opts.apikey_path)
+	if not hibp_api_key:
+		print("\nCould not read file:", opts.apikey_path)
+		print("Check if the file path is valid, and try again.\n")
+		sys.exit(1)
 
 	emails = None
 	if opts.single_email:
@@ -196,18 +203,27 @@ def main():
 		print("Please provide a single email address (using -s) or a list of email addresses (using -i).\n")
 		sys.exit(1)
 
-	results = []
+	breaches = []
+	pastebins = []
 
 	if opts.only_breaches:
-		results.append(get_results(emails, BREACHED, opts, hibp_api_key))
+		breaches = get_results(emails, BREACHED, opts, hibp_api_key)
 	elif opts.only_pastebins:
-		results.append(get_results(emails, PASTEBIN, opts, hibp_api_key))
+		pastebins = get_results(emails, PASTEBIN, opts, hibp_api_key)
 	else:
-		results.append(get_results(emails, BREACHED, opts, hibp_api_key))
-		results.append(get_results(emails, PASTEBIN, opts, hibp_api_key))
+		breaches = get_results(emails, BREACHED, opts, hibp_api_key)
+		pastebins = get_results(emails, PASTEBIN, opts, hibp_api_key)
 
-	if opts.output_path:
-		write_results_to_file(results, opts)
+	if not opts.output_path:
+		print_results(breaches, "Email address %s not pwned.  Yay!")
+		print_results(
+			pastebins, "Email address %s was not found in any pastebins.  Yay!"
+		)
+	else:
+		results = []
+		if breaches: results.append(breaches)
+		if pastebins: results.append(pastebins)
+		write_results_to_file(tuple(results), opts)
 
 if __name__ == '__main__':
 	main()
