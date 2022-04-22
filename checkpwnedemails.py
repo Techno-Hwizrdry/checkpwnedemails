@@ -1,14 +1,13 @@
 __author__  = "Alexan Mardigian"
-__version__ = "1.2.4"
+__version__ = "1.2.5"
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from os.path import exists
 from time import sleep
+from typing import List
 import json
 import requests
 import sys
-
-PWNED_API_URL = "https://haveibeenpwned.com/api/v3/%s/%s?truncateResponse=%s"
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -19,7 +18,7 @@ PASTEBIN = "pasteaccount"
 
 RATE_LIMIT = 1.6  # in seconds
 
-def get_args():
+def get_args() -> Namespace:
 	parser = ArgumentParser()
 
 	parser.add_argument('-a', dest='apikey_path',  help='Path to text file that contains your HIBP API key.')
@@ -31,35 +30,45 @@ def get_args():
 	parser.add_argument('-s', dest="single_email", help='Send query for just one email address.')
 	parser.add_argument('-t', action="store_true", dest='only_pastebins', help='Return results for pastebins only.')
 
-	if len(sys.argv) == 1:  # If no arguments were provided, then print help and exit.
+	# If no arguments were provided, then print help and exit.
+	if len(sys.argv) == 1:
 		parser.print_help()
 		sys.exit(1)
 
 	return parser.parse_args()
 
-#  Used for removing the trailing '\n' character on each email.
-def clean_list(list_of_strings):
-	return [str(x).strip() for x in list_of_strings]
+def clean_list(strings: List[str]) -> List[str]:
+	"""
+	Returns a list of strings stripped of trailing '\n' character.
+	"""
+	return [str(x).strip() for x in strings]
 
-#  This function will print the appropriate output string based on the
-#  HTTP error code what was passed in. If an invalid HIBP API key was used
-#  (error code 401), then checkpwnedemails.py should stop running.
-def printHTTPErrorOutput(http_error_code, hibp_api_key, email=None):
+def printHTTPErrorOutput(http_error_code: int,
+						 hibp_api_key: str, email: str=None) -> None:
+	"""
+	This function will print the appropriate output string based on the
+	HTTP error code what was passed in. If an invalid HIBP API key was used
+	(error code 401), then checkpwnedemails.py will stop running.
+	"""
 	ERROR_CODE_OUTPUT = {
-		400: "HTTP Error 400.  %s does not appear to be a valid email address." % (email),
-		401: "HTTP Error 401.  Unauthorised - the API key provided (%s) was not valid." % (hibp_api_key),
+		400: f"HTTP Error 400. {email} does not appear to be a valid email address.",
+		401: f"HTTP Error 401.  Unauthorised - the API key provided {hibp_api_key} was not valid.",
 		403: "HTTP Error 403.  Forbidden - no user agent has been specified in the request.",
 		429: "HTTP Error 429.  Too many requests; the rate limit has been exceeded.",
 		503: "HTTP Error 503.  Service unavailable."
 	}
-
-	default_output = "HTTP Error %s" % (http_error_code)
+	default_output = f"HTTP Error {http_error_code}"
 	print(ERROR_CODE_OUTPUT.get(http_error_code, default_output))
 
 	if http_error_code == 401:
 		sys.exit(1)
 
-def get_results(emails, service, opts, hibp_api_key):
+def get_results(emails: List[str], service: str,
+				opts: Namespace, hibp_api_key: str) -> List:
+	"""
+	Returns results from the HIBP API, if any.
+	"""
+	URL_BASE = "https://haveibeenpwned.com/api/v3/"
 	HEADERS = {
 		"User-Agent": "checkpwnedemails",
 		"hibp-api-key": hibp_api_key,
@@ -69,10 +78,11 @@ def get_results(emails, service, opts, hibp_api_key):
 	for email in emails:
 		email = email.strip()
 		data = []
-		names_only = "true" if opts.names_only else "false"
+		names_only = str(opts.names_only).lower()
 
 		try:
-			response = requests.get(url=PWNED_API_URL % (service, email, names_only), headers=HEADERS)
+			url = f'{URL_BASE}{service}/{email}?truncateResponse={names_only}'
+			response = requests.get(headers=HEADERS, url=url)
 			is_pwned = True
 
 			# Before parsing the response (for JSON), check if any content was returned.
@@ -99,19 +109,21 @@ def get_results(emails, service, opts, hibp_api_key):
 
 	return results
 
-def print_results(results, not_pwned_msg):
+def print_results(results: List, not_pwned_msg: str) -> None:
 	for result in results:
 		data = result[DATAINDEX]
 		email = result[EMAILINDEX]
 		if not result[PWNEDINDEX]:
 			print(not_pwned_msg % (email))
 		else:
-			print("\n%s pwned!\n==========" % (email))
+			print(f"\n{email} pwned!\n==========")
 			print(json.dumps(data, indent=4))
 
-#  This function will convert every item, in dlist, into a string and
-#  encode any unicode strings into an 8-bit string.
-def clean_and_encode(dlist):
+def clean_and_encode(dlist: List) -> List[str]:
+	"""
+	This function will convert every item, in dlist, into a string
+	and encode any unicode strings into an 8-bit string.
+	"""
 	cleaned_list = []
 	for d in dlist:
 		try:
@@ -121,7 +133,7 @@ def clean_and_encode(dlist):
 
 	return cleaned_list
 
-def tab_delimited_string(data):
+def tab_delimited_string(data: tuple) -> str:
 	begining_sub_str = data[EMAILINDEX] + '\t' + str(data[PWNEDINDEX])
 	output = []
 
@@ -134,7 +146,7 @@ def tab_delimited_string(data):
 
 	return '\n'.join(output)
 
-def write_results_to_file(results, opts):
+def write_results_to_file(results: tuple, opts: Namespace) -> None:
 	BREACHESTXT   = "_breaches.txt"
 	PASTESTXT     = "_pastes.txt"
 	BREACH_HEADER = (
@@ -172,14 +184,14 @@ def write_results_to_file(results, opts):
 			for r in result:
 				outfile.write(tab_delimited_string(r) + '\n')
 
-def read_apikey(apikey_path):
+def read_apikey(apikey_path: str) -> str:
 	try:
 		with open(apikey_path) as apikey_file:
 			return apikey_file.readline().strip()
 	except IOError:
 		return ''
 
-def main():
+def main() -> None:
 	opts = get_args()
 	if not opts.apikey_path:
 		print("\nThe path to the file containing the HaveIBeenPwned API key was not found.")
@@ -188,7 +200,7 @@ def main():
 
 	hibp_api_key = read_apikey(opts.apikey_path)
 	if not hibp_api_key:
-		print("\nCould not read file:", opts.apikey_path)
+		print(f"\nCould not read file: {opts.apikey_path}")
 		print("Check if the file path is valid, and try again.\n")
 		sys.exit(1)
 
