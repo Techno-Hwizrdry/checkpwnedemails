@@ -1,0 +1,3 @@
+[hibp]
+HIBP_APIKEY=api_key_goes_here
+HIBP_RATELIMIT=6.0
