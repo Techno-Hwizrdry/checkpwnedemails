@@ -1,14 +1,15 @@
 import sys
 import json
-from typing import List
-from time import sleep
 from argparse import ArgumentParser, Namespace
+from configparser import ConfigParser
+from os.path import exists
+from time import sleep
+from typing import List
 
 import requests
 
 __author__ = "Alexan Mardigian"
-__version__ = "1.2.5"
-
+__version__ = "3.0"
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -17,15 +18,13 @@ DATAINDEX = 2
 BREACHED = "breachedaccount"
 PASTEBIN = "pasteaccount"
 
-RATE_LIMIT = 1.6  # in seconds
-
-
 def get_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-a', dest='apikey_path',
-                        help='Path to text file that contains your HIBP API key.')
     parser.add_argument('-b', action="store_true", dest='only_breaches',
                         help='Return results for breaches only.')
+    parser.add_argument('-c', default='checkpwnedemails.conf',
+	                    dest='config_path',
+						help='Path to configuration file.')
     parser.add_argument('-i', dest='input_path',
                         help='Path to text file that lists email addresses.')
     parser.add_argument('-n', action="store_true", dest='names_only',
@@ -46,6 +45,17 @@ def get_args() -> Namespace:
 
     return parser.parse_args()
 
+def read_config_file(filename:str) -> ConfigParser:
+    if not exists(filename):
+        raise FileNotFoundError(f"Config file {filename} not found.")
+
+    config = ConfigParser()
+    config.read(filename)
+        
+    if 'hibp' not in config.keys():
+        raise KeyError(f"The [hibp] is missing in {filename}.")
+            
+    return config['hibp']
 
 def clean_list(strings: List[str]) -> List[str]:
     """
@@ -76,10 +86,11 @@ def printHTTPErrorOutput(http_error_code: int,
 
 
 def get_results(emails: List[str], service: str,
-                opts: Namespace, hibp_api_key: str) -> List:
+                opts: Namespace, config: ConfigParser) -> List:
     """
     Returns results from the HIBP API, if any.
     """
+    hibp_api_key = config['hibp_apikey']
     URL_BASE = "https://haveibeenpwned.com/api/v3/"
     HEADERS = {
         "User-Agent": "checkpwnedemails",
@@ -117,7 +128,7 @@ def get_results(emails: List[str], service: str,
             elif e.code != 404:
                 printHTTPErrorOutput(e.code, hibp_api_key, email)
 
-        sleep(RATE_LIMIT)  # This delay is for rate limiting.
+        sleep(float(config['hibp_ratelimit']))  # For rate limiting.
 
     return results
 
@@ -149,13 +160,20 @@ def clean_and_encode(dlist: List) -> List[str]:
 
 
 def tab_delimited_string(data: tuple) -> str:
-    begining_sub_str = data[EMAILINDEX] + '\t' + str(data[PWNEDINDEX])
+    begining_sub_str = f'{data[EMAILINDEX]}\t{str(data[PWNEDINDEX])}'
     output = []
 
     if data[DATAINDEX]:
         for bp in data[DATAINDEX]:  # bp stands for breaches/pastebins
-            s = clean_and_encode(bp.values())
-            output.append(begining_sub_str + '\t' + "\t".join(s))
+            try:
+                s = '\t'.join(clean_and_encode(bp.values()))
+                row = f'{begining_sub_str}\t{s}'
+            except AttributeError:
+                statusCode = data[DATAINDEX].get('statusCode')
+                message = data[DATAINDEX].get('message')
+                row = f'{begining_sub_str}\t{statusCode}\t{message}'
+
+            output.append(row)
     else:
         output.append(begining_sub_str)
 
@@ -201,25 +219,15 @@ def write_results_to_file(results: tuple, opts: Namespace) -> None:
                 outfile.write(tab_delimited_string(r) + '\n')
 
 
-def read_apikey(apikey_path: str) -> str:
-    try:
-        with open(apikey_path) as apikey_file:
-            return apikey_file.readline().strip()
-    except IOError:
-        return ''
-
-
 def main() -> None:
     opts = get_args()
-    if not opts.apikey_path:
-        print("\nThe path to the file containing the HaveIBeenPwned API key was not found.")
-        print("Please provide the file path with the -a switch and try again.\n")
+    try:
+        config = read_config_file(opts.config_path)
+    except FileNotFoundError as e:
+        print(e)
         sys.exit(1)
-
-    hibp_api_key = read_apikey(opts.apikey_path)
-    if not hibp_api_key:
-        print(f"\nCould not read file: {opts.apikey_path}")
-        print("Check if the file path is valid, and try again.\n")
+    except KeyError as e:
+        print(e)
         sys.exit(1)
 
     emails = None
@@ -237,12 +245,12 @@ def main() -> None:
     pastebins = []
 
     if opts.only_breaches:
-        breaches = get_results(emails, BREACHED, opts, hibp_api_key)
+        breaches = get_results(emails, BREACHED, opts, config)
     elif opts.only_pastebins:
-        pastebins = get_results(emails, PASTEBIN, opts, hibp_api_key)
+        pastebins = get_results(emails, PASTEBIN, opts, config)
     else:
-        breaches = get_results(emails, BREACHED, opts, hibp_api_key)
-        pastebins = get_results(emails, PASTEBIN, opts, hibp_api_key)
+        breaches = get_results(emails, BREACHED, opts, config)
+        pastebins = get_results(emails, PASTEBIN, opts, config)
 
     if not opts.output_path:
         print_results(breaches, "Email address %s not pwned.  Yay!")
@@ -256,7 +264,6 @@ def main() -> None:
         if pastebins:
             results.append(pastebins)
         write_results_to_file(tuple(results), opts)
-
 
 if __name__ == '__main__':
     main()
