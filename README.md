@@ -19,7 +19,7 @@ Once those prerequisites have been installed, git clone this repo, cd into it, a
 
 Or, if you're installing it on a Windows machine via Powershell:
 
-`cd /path/to/checkpwnedemails && ./setup_virtualenv.ps1`
+`cd \path\to\checkpwnedemails && .\setup_virtualenv.ps1`
 
 setup_virtualenv.sh (as well as setup_virtualenv.ps1) will set checkpwnedemails as the virtual environment, activate it, and call pip3 to download and install all the python3 dependencies for this script.  These python dependencies are listed in requirements.txt.
 
