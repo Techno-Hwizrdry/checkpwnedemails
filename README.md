@@ -35,13 +35,11 @@ Once you have acquired an API key, copy and paste it into the checkpwnedemails.c
 
 To start, activate the python virtualenv.  On linux:
 
-`cd /path/to/checkpwnedemails/
-source bin/activate`
+`cd /path/to/checkpwnedemails/ && source bin/activate`
 
 Or on Windows Powershell:
 
-`cd \path\to\checkpwnedemails\
-.\Scripts\activate`
+`cd \path\to\checkpwnedemails\; .\Scripts\activate`
 
 To check a single email address:
 
