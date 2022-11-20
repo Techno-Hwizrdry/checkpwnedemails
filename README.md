@@ -17,7 +17,11 @@ Once those prerequisites have been installed, git clone this repo, cd into it, a
 
 `cd /path/to/checkpwnedemails && ./setup_virtualenv.sh`
 
-setup_virtualenv.sh will set checkpwnedemails as the virtual environment, activate it, and call pip3 to download and install all the python3 dependencies for this script.  These python dependencies are listed in requirements.txt.
+Or, if you're installing it on a Windows machine via Powershell:
+
+`cd /path/to/checkpwnedemails && ./setup_virtualenv.ps1`
+
+setup_virtualenv.sh (as well as setup_virtualenv.ps1) will set checkpwnedemails as the virtual environment, activate it, and call pip3 to download and install all the python3 dependencies for this script.  These python dependencies are listed in requirements.txt.
 
 ## API Key 
 [As of the HaveIBeenPwned v3 update](https://www.troyhunt.com/authentication-and-the-have-i-been-pwned-api/), you will need an API key to run checkpwnedemails.py.  You can get one [here](https://haveibeenpwned.com/API/Key).
@@ -28,6 +32,16 @@ Once you have acquired an API key, copy and paste it into the checkpwnedemails.c
 [As of this HaveIBeenPwned update](https://www.troyhunt.com/the-have-i-been-pwned-api-now-has-different-rate-limits-and-annual-billing/), the rate limit defined in the checkpwnedemails.conf file will depend on your pricing tier.  For example, if you bought the 50 RPM (requests for minute) tier, set HIBP_RATELIMIT to 1.2.  `60 / 50 = 1.2 seconds`
 
 ## Usage
+
+To start, activate the python virtualenv.  On linux:
+
+`cd /path/to/checkpwnedemails/
+source bin/activate`
+
+Or on Windows Powershell:
+
+`cd \path\to\checkpwnedemails\
+.\Scripts\activate`
 
 To check a single email address:
 
