@@ -1,5 +1,6 @@
-import sys
 import json
+import re
+import sys
 from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
 from os.path import exists
@@ -9,7 +10,7 @@ from typing import List
 import requests
 
 __author__ = "Alexan Mardigian"
-__version__ = "3.0"
+__version__ = "3.1"
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -45,6 +46,7 @@ def get_args() -> Namespace:
 
     return parser.parse_args()
 
+
 def read_config_file(filename:str) -> ConfigParser:
     if not exists(filename):
         raise FileNotFoundError(f"Config file {filename} not found.")
@@ -57,11 +59,20 @@ def read_config_file(filename:str) -> ConfigParser:
             
     return config['hibp']
 
+
 def clean_list(strings: List[str]) -> List[str]:
     """
     Returns a list of strings stripped of trailing '\n' character.
     """
     return [str(x).strip() for x in strings]
+
+
+def is_valid_email(email:str) -> bool:
+    """
+    Returns True if email is a syntactically valid.  Otherwise, returns False.
+    """
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    return bool(re.fullmatch(regex, email))
 
 
 def printHTTPErrorOutput(http_error_code: int,
@@ -91,46 +102,46 @@ def get_results(emails: List[str], service: str,
     Returns results from the HIBP API, if any.
     """
     hibp_api_key = config['hibp_apikey']
-    URL_BASE = "https://haveibeenpwned.com/api/v3/"
-    HEADERS = {
-        "User-Agent": "checkpwnedemails",
-        "hibp-api-key": hibp_api_key,
-    }
     results = []  # list of tuples (email address, been pwned?, json data)
 
     for email in emails:
-        email = email.strip()
-        data = []
-        names_only = str(opts.names_only).lower()
-
-        try:
-            url = f'{URL_BASE}{service}/{email}?truncateResponse={names_only}'
-            response = requests.get(headers=HEADERS, url=url)
-            is_pwned = True
-
-            # Before parsing the response (for JSON), check if any content was returned.
-            # Otherwise, a json.decoder.JSONDecodeError will be thrown because we were trying
-            # to parse JSON from an empty response.
-            if response.content:
-                data = response.json()
-            else:
-                # No results came back for this email.
-                # According to HIBP, this email was not pwned.
-                data = None
-                is_pwned = False
-
-            results.append((email, is_pwned, data))
-        except requests.exceptions.HTTPError as e:
-            if e.code == 404 and not opts.only_pwned:
-                # No results came back for this email.
-                # According to HIBP, this email was not pwned.
-                results.append((email, False, data))
-            elif e.code != 404:
-                printHTTPErrorOutput(e.code, hibp_api_key, email)
-
+        data = fetch(email, service, opts, hibp_api_key)
+        if data: results.append(data)
         sleep(float(config['hibp_ratelimit']))  # For rate limiting.
 
     return results
+
+
+def fetch(email: str, service:str, opts: Namespace, api_key: str) -> tuple:
+    NO_DATA = (email, False, None)
+    if not is_valid_email(email):
+        printHTTPErrorOutput(400, api_key, email)
+        return NO_DATA
+
+    URL_BASE = "https://haveibeenpwned.com/api/v3/"
+    HEADERS = {
+        "User-Agent": "checkpwnedemails",
+        "hibp-api-key": api_key,
+    }
+    data = []
+    only_pwned = opts.only_pwned
+
+    names_only = str(opts.names_only).lower()
+    url = f'{URL_BASE}{service}/{email}?truncateResponse={names_only}'
+    response = requests.get(headers=HEADERS, url=url)
+    status = response.status_code
+    
+    if status == 404 and not only_pwned:
+        return NO_DATA
+
+    if status and status != 404 and status != 200:
+        printHTTPErrorOutput(status, api_key, email)
+        return NO_DATA
+
+    data = response.json()
+    is_pwned = bool(data)
+
+    return (email, is_pwned, data)
 
 
 def print_results(results: List, not_pwned_msg: str) -> None:
@@ -163,19 +174,19 @@ def tab_delimited_string(data: tuple) -> str:
     begining_sub_str = f'{data[EMAILINDEX]}\t{str(data[PWNEDINDEX])}'
     output = []
 
-    if data[DATAINDEX]:
-        for bp in data[DATAINDEX]:  # bp stands for breaches/pastebins
-            try:
-                s = '\t'.join(clean_and_encode(bp.values()))
-                row = f'{begining_sub_str}\t{s}'
-            except AttributeError:
-                statusCode = data[DATAINDEX].get('statusCode')
-                message = data[DATAINDEX].get('message')
-                row = f'{begining_sub_str}\t{statusCode}\t{message}'
+    if not data[DATAINDEX]:
+        return begining_sub_str + '\n'
 
-            output.append(row)
-    else:
-        output.append(begining_sub_str)
+    for bp in data[DATAINDEX]:  # bp stands for breaches/pastebins
+        try:
+            s = '\t'.join(clean_and_encode(bp.values()))
+            row = f'{begining_sub_str}\t{s}'
+        except AttributeError:
+            statusCode = data[DATAINDEX].get('statusCode')
+            message = data[DATAINDEX].get('message')
+            row = f'{begining_sub_str}\t{statusCode}\t{message}'
+
+        output.append(row)
 
     return '\n'.join(output)
 
@@ -189,9 +200,10 @@ def write_results_to_file(results: tuple, opts: Namespace) -> None:
         "Data Classes", "Is Verified", "Is Fabricated", "Is Sensitive",
         "Is Retired", "Is SpamList"
     )
-    PASTES_HEADER = ("Email Address", "Is Pwned", "ID",
-                     "Source", "Title", "Date", "Email Count"
-                     )
+    PASTES_HEADER = (
+        "Email Address", "Is Pwned", "ID",
+        "Source", "Title", "Date", "Email Count"
+    )
     files = []
     file_headers = {
         BREACHESTXT: "\t".join(BREACH_HEADER),
@@ -212,11 +224,16 @@ def write_results_to_file(results: tuple, opts: Namespace) -> None:
         filename = out_path[: out_path.rfind('.')]
 
     for result, f in zip(results, files):
-        with open(filename + f, 'w', encoding='utf-8') as outfile:
-            outfile.write(file_headers[f] + '\n')
+        write(filename, f, file_headers, result)
 
-            for r in result:
-                outfile.write(tab_delimited_string(r) + '\n')
+
+def write(filename:str, data_type:str,
+          file_headers: dict, result: list) -> None:
+    with open(filename + data_type, 'w', encoding='utf-8') as outfile:
+        outfile.write(file_headers[data_type] + '\n')
+
+        for r in result:
+            outfile.write(tab_delimited_string(r) + '\n')
 
 
 def main() -> None:
