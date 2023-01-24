@@ -10,7 +10,7 @@ from typing import List
 import requests
 
 __author__ = "Alexan Mardigian"
-__version__ = "3.1"
+__version__ = "3.2"
 
 EMAILINDEX = 0
 PWNEDINDEX = 1
@@ -123,25 +123,29 @@ def fetch(email: str, service:str, opts: Namespace, api_key: str) -> tuple:
         "User-Agent": "checkpwnedemails",
         "hibp-api-key": api_key,
     }
-    data = []
-    only_pwned = opts.only_pwned
-
     names_only = str(opts.names_only).lower()
     url = f'{URL_BASE}{service}/{email}?truncateResponse={names_only}'
-    response = requests.get(headers=HEADERS, url=url)
-    status = response.status_code
+
+    try:
+        response = requests.get(headers=HEADERS, url=url)
+        response.raise_for_status()
+        data = response.json()
+        is_pwned = bool(data)
+        return (email, is_pwned, data)
+    except requests.exceptions.ConnectionError:
+        print('Connection error.  Perhaps the network is down?')
+        sys.exit(1)
+    except requests.exceptions.Timeout:
+        print(f'Connection timed out.  Skipping {email}.')
+        return NO_DATA
+    except requests.exceptions.HTTPError:
+        status = response.status_code
     
-    if status == 404 and not only_pwned:
-        return NO_DATA
+        if status == 404 and not opts.only_pwned: return NO_DATA
 
-    if status and status != 404 and status != 200:
-        printHTTPErrorOutput(status, api_key, email)
-        return NO_DATA
-
-    data = response.json()
-    is_pwned = bool(data)
-
-    return (email, is_pwned, data)
+        if status != 404:
+            printHTTPErrorOutput(status, api_key, email)
+            return NO_DATA
 
 
 def print_results(results: List, not_pwned_msg: str) -> None:
@@ -172,11 +176,11 @@ def clean_and_encode(dlist: List) -> List[str]:
 
 def tab_delimited_string(data: tuple) -> str:
     begining_sub_str = f'{data[EMAILINDEX]}\t{str(data[PWNEDINDEX])}'
-    output = []
 
     if not data[DATAINDEX]:
         return begining_sub_str + '\n'
 
+    output = []
     for bp in data[DATAINDEX]:  # bp stands for breaches/pastebins
         try:
             s = '\t'.join(clean_and_encode(bp.values()))
