@@ -1,2 +1,11 @@
+__pycache__
+.vscode
+bin
+Include
+Lib
+lib64
+Scripts
+pyvenv.cfg
 *.conf
 *.pyc
+*.txt
